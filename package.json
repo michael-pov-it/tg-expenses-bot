@@ -1,0 +1,19 @@
+{
+  "name": "tg-bot-expenses",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "test"
+  },
+  "keywords": [
+    "tg-bot",
+    "bot",
+    "ai"
+  ],
+  "author": "Mike_The_Engineer",
+  "license": "MIT",
+  "devDependencies": {
+    "node-telegram-bot-api": "^0.61.0"
+  }
+}
