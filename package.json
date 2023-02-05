@@ -14,6 +14,8 @@
   "author": "Mike_The_Engineer",
   "license": "MIT",
   "devDependencies": {
-    "node-telegram-bot-api": "^0.61.0"
+    "dotenv": "^16.0.3",
+    "node-telegram-bot-api": "^0.61.0",
+    "pg": "^8.9.0"
   }
 }
