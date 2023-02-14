@@ -1,5 +1,6 @@
 const functions = require("./commands/start");
 const TelegramBot = require('node-telegram-bot-api');
+const express = require('express');
 const { Client } = require('pg');
 const dotenv = require('dotenv');
 dotenv.config();
@@ -23,9 +24,34 @@ client.connect((err) => {
   }
 });
 
+const app = express();
+
+app.listen(3000, () => {
+  console.log('Server started on port 3000');
+});
+
 // Start message
 bot.onText(/\/start/, (msg) => {
   functions.start(bot, msg);
+});
+
+// Get list of transactions by express
+app.get('/transactions', async (req, res) => {
+  try {
+    const result = await client.query(`
+      SELECT type, category, amount, date_of_transaction 
+      FROM public.budget
+      GROUP BY date_of_transaction, id`);
+    const budget = result.rows;
+    let transactionsList = 'The list of transactions:\n\n';
+    budget.forEach((row) => {
+      transactionsList += `${row.id} | ${row.type} | ${row.category} | ${row.amount}\n`;
+    });
+    res.send(transactionsList);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send('An error occurred while retrieving the list of transactions. Please try again later.');
+  }
 });
 
 // Show current budget
