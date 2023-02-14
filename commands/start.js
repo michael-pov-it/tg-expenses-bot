@@ -1,7 +1,8 @@
 // START
 const commands = [
-  { command: 'Show Budget', text: '/budget' },
-  { command: 'Add transaction', text: '/add' },
+  { text: 'Показать бюджет', callback_data: 'budget' },
+  { text: 'Добавить транзакцию', callback_data: 'add' },
+  { text: 'Транзакции за текущий месяц', callback_data: 'last' },
 ];
 
 const dotenv = require('dotenv');

@@ -36,11 +36,12 @@ bot.onText(/\/start/, (msg) => {
 });
 
 // Get list of transactions by express
-app.get('/transactions', async (req, res) => {
+app.get('/last', async (req, res) => {
   try {
     const result = await client.query(`
       SELECT type, category, amount, date_of_transaction 
-      FROM public.budget
+      FROM budget
+      WHERE date_of_transaction >= DATE_TRUNC('month', CURRENT_DATE)
       GROUP BY date_of_transaction, id`);
     const budget = result.rows;
     let transactionsList = 'The list of transactions:\n\n';
@@ -68,9 +69,8 @@ bot.onText(/\/budget/, async (msg) => {
     `);
     const budget = result.rows;
     let curr = currency;
-    let budgetReport = 'Current Budget:\n\n';
+    let budgetReport = 'Текущий бюджет:\n\n';
     budget.forEach((row) => {
-      //budgetReport += `${row.category} | ${row.type} | ${curr}${row.amount} \n`;
       budgetReport += `${row.category}: ${curr}${row.balance} \n`;
     });
     bot.sendMessage(chatId, budgetReport);
@@ -83,19 +83,28 @@ bot.onText(/\/budget/, async (msg) => {
 // Add a new transaction
 bot.onText(/\/add/, (msg) => {
   const chatId = msg.chat.id;
-  bot.sendMessage(chatId, 'What type of transaction would you like to add? (income or spending)');
+  const opts = {
+    reply_markup: {
+      keyboard: [
+        [
+          { text: 'Добавить транзакцию' }
+        ]
+      ]
+    }
+  };
+  bot.sendMessage(chatId, 'Что бы Вы хотели добавить? (income || spending)', opts);
   bot.once('message', (msg) => {
     const transactionType = msg.text.toLowerCase();
     if (transactionType !== 'income' && transactionType !== 'spending') {
       bot.sendMessage(chatId, 'Invalid transaction type. Please try again.');
     } else {
-      bot.sendMessage(chatId, 'What is the amount of the transaction?');
+      bot.sendMessage(chatId, 'What is the amount of the transaction?', opts);
       bot.once('message', (msg) => {
         const amount = parseFloat(msg.text);
         if (isNaN(amount) && amount<=0) {
-          bot.sendMessage(chatId, 'Invalid amount. Please try again.');
+          bot.sendMessage(chatId, 'Invalid amount. Please try again.', opts);
         } else {
-          bot.sendMessage(chatId, `What category does this ${transactionType} belong to?`);
+          bot.sendMessage(chatId, `What category does this ${transactionType} belong to?`, opts);
           bot.once('message', async (msg) => {
             const category = msg.text;
             try {
@@ -103,11 +112,11 @@ bot.onText(/\/add/, (msg) => {
                 INSERT INTO budget (category, type, amount)
                 VALUES ($1, $2, $3)`,
                 [category, transactionType, amount]);
-                bot.sendMessage(chatId, `${transactionType} added successfully.`);
+                bot.sendMessage(chatId, `${transactionType} added successfully.`, opts);
                 console.log(result);
             } catch (err) {
                 console.error(err);
-                bot.sendMessage(chatId, `Transaction failed to add. Please try again.`);
+                bot.sendMessage(chatId, `Transaction failed to add. Please try again.`, opts);
             }
           });
         }
