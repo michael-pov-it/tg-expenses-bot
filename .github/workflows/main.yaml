@@ -12,8 +12,7 @@ jobs:
   build_and_push:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
       - name: Setup Cloud cli
         uses: google-github-actions/setup-gcloud@v0.2.0
@@ -29,10 +28,13 @@ jobs:
         run: |-
           docker build -t eu.gcr.io/${{ env.GCP_PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }} .
           docker push eu.gcr.io/${{ env.GCP_PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }}
+
   deploy:
     runs-on: ubuntu-latest
     needs: build_and_push
     steps:
+      - uses: actions/checkout@v3
+
       - name: Deploy to Cloud Run
         id: expenses-dev
         uses: google-github-actions/deploy-cloudrun@v1
