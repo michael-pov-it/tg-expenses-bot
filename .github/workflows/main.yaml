@@ -49,6 +49,8 @@ jobs:
           service: ${{ env.SERVICE }}
           image: eu.gcr.io/${{ env.GCP_PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }}
           region: ${{ env.REGION }}
+          
+      - run: gcloud run services add-iam-policy-binding ${{ env.SERVICE }} --member="allUsers" --role="roles/run.invoker"
 
       - name: Show Output
         run: curl "${{ steps.expenses-dev.outputs.url }}"
