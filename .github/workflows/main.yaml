@@ -49,8 +49,6 @@ jobs:
           service: ${{ env.SERVICE }}
           image: eu.gcr.io/${{ env.GCP_PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }}
           region: ${{ env.REGION }}
-          labels:
-            owner=m.gordievsky
 
       - name: Show Output
         run: curl "${{ steps.expenses-dev.outputs.url }}"
