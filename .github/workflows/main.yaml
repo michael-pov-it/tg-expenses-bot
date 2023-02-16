@@ -44,7 +44,7 @@ jobs:
 
       - name: Deploy to Cloud Run
         id: expenses-dev
-        uses: google-github-actions/deploy-cloudrun@v
+        uses: google-github-actions/deploy-cloudrun@v1
         with:
           service: ${{ env.SERVICE }}
           image: eu.gcr.io/${{ env.GCP_PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }}
