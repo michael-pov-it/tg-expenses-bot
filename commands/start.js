@@ -1,9 +1,9 @@
 // START
-const commands = [
-  { text: 'Показать бюджет', callback_data: 'budget' },
-  { text: 'Добавить транзакцию', callback_data: 'add' },
-  { text: 'Транзакции за текущий месяц', callback_data: 'last' },
-];
+// const commands = [
+//   { text: 'Показать бюджет', command: '/budget' },
+//   { text: 'Добавить транзакцию', command: '/add' },
+//   { text: 'Транзакции за текущий месяц', command: 'last' },
+// ];
 
 const dotenv = require('dotenv');
 dotenv.config();
@@ -20,17 +20,20 @@ const client = new Client({
 
 // START
 exports.start = (bot, msg) => {
-  const options = {
-    reply_markup: {
-      keyboard: commands.map(c => [c.text]),
-      resize_keyboard: true,
-      one_time_keyboard: true,
-    },
-  };
+  // const options = {
+  //   reply_markup: {
+  //     keyboard: commands.map(c => [c.text]),
+  //     resize_keyboard: true,
+  //     one_time_keyboard: true,
+  //   },
+  // };
   bot.sendMessage(
     msg.chat.id,
-    `Welcome to the Expenses Bot!\n/budget\n/add`,
-    options);
+    `Добро пожаловать в бюджет бот!\n
+    /budget - Текущий Бюджет\n
+    /add - Добавить транзакцию\n
+    /last - Список транзакций за текущий месяц`
+  );
 }
 
 // TRANSACTIONS
