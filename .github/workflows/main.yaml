@@ -58,7 +58,6 @@ jobs:
 
       - run: |
           gcloud run services add-iam-policy-binding ${{ env.SERVICE }} \
-          --port=3000 \
           --member="allUsers" \
           --role="roles/run.invoker" \
           --region ${{ env.REGION }}
