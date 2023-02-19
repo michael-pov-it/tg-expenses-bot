@@ -3,6 +3,7 @@ env:
   GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   SERVICE: expenses-dev
   REGION: europe-central2
+  SA_KEY: ${{ secrets.GCP_SA_KEY }}
 
 on:
   workflow_dispatch:
@@ -10,7 +11,6 @@ on:
     branches: ['main']
 
 jobs:
-
   build_and_push:
     runs-on: ubuntu-latest
     steps:
@@ -20,7 +20,7 @@ jobs:
         uses: google-github-actions/setup-gcloud@v0.2.0
         with:
           project_id: ${{ env.GCP_PROJECT_ID }}
-          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          service_account_key: ${{ env.SA_KEY }}
           export_default_credentials: true
 
       - name: Authorize Docker push
@@ -41,7 +41,7 @@ jobs:
         uses: google-github-actions/setup-gcloud@v0.2.0
         with:
           project_id: ${{ env.GCP_PROJECT_ID }}
-          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          service_account_key: ${{ env.SA_KEY }}
           export_default_credentials: true
 
       - name: Deploy to Cloud Run
@@ -55,11 +55,13 @@ jobs:
             NODE_ENV=DEV
             CURRENCY=EUR
             LANG=ENG
+            PORT=3000
 
       - run: |
           gcloud run services add-iam-policy-binding ${{ env.SERVICE }} \
           --member="allUsers" \
           --role="roles/run.invoker" \
+          --allow-unauthenticated \
           --region ${{ env.REGION }}
 
       - name: Show Output
