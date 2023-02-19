@@ -6,6 +6,8 @@ env:
 
 on:
   workflow_dispatch:
+  push:
+    - 'main'
 
 jobs:
 
@@ -49,9 +51,16 @@ jobs:
           service: ${{ env.SERVICE }}
           image: eu.gcr.io/${{ env.GCP_PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }}
           region: ${{ env.REGION }}
-          
+          secrets: |
+            BOT_TOKEN=5477850762:AAHFh8b7sZv_cFlWOyrf_D_AsKco8FPS5pE
+          env_vars: |
+            NODE_ENV=DEV
+            CURRENCY=EUR
+            LANG=ENG
+
       - run: |
           gcloud run services add-iam-policy-binding ${{ env.SERVICE }} \
+          --port=3000 \
           --member="allUsers" \
           --role="roles/run.invoker" \
           --region ${{ env.REGION }}
