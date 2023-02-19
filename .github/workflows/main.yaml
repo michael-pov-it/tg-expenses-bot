@@ -51,8 +51,6 @@ jobs:
           service: ${{ env.SERVICE }}
           image: eu.gcr.io/${{ env.GCP_PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }}
           region: ${{ env.REGION }}
-          secrets: |
-            BOT_TOKEN=REDACTED_CREDENTIAL
           env_vars: |
             NODE_ENV=DEV
             CURRENCY=EUR
