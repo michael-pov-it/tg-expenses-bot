@@ -7,7 +7,6 @@ const client = new Client({
   connectionString: databaseUrl,
 });
 
-
 /// *********
 /// FUNCTIONS
 /// *********
@@ -17,6 +16,7 @@ exports.start = (bot, msg) => {
   bot.sendMessage(
     msg.chat.id,
     `Добро пожаловать в бюджет бот!\n
+    https://expenses-dev-cqetgkfjsa-lm.a.run.app/\n
     /budget - Текущий Бюджет\n
     /add - Добавить транзакцию\n
     /last - Список транзакций за текущий месяц`
@@ -39,7 +39,8 @@ const showTransactions = async (bot, msg) => {
   } catch (error) {
     console.error(error);
     bot.sendMessage(
-      chatId, 'An error occurred while retrieving the list of transactions. Please try again later.'
+      chatId,
+      'An error occurred while retrieving the list of transactions. Please try again later.'
     );
   }
 };
@@ -66,14 +67,6 @@ exports.transactions = showTransactions;
 //     bot.sendMessage(chatId, 'An error occurred while retrieving the list of transactions. Please try again later.');
 //   }
 // }
-
-
-
-
-
-
-
-
 
 //       'You can add, view, update, and delete transactions by using the following commands:\n' +
 //       '/budget - view your current budget\n' +

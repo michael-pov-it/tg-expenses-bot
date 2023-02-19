@@ -41,12 +41,6 @@ bot.onText(/\/start/, (msg) => {
   functions.start(bot, msg);
 });
 
-const allowedUserId = 746413249;
-if (msg.from.id !== allowedUserId) {
-  bot.sendMessage(chatId, "You don't have enough permissions to use this command.");
-  return;
-}
-
 // Get list of transactions by express
 bot.onText(/\/last/, async (msg) => {
   const chatId = msg.chat.id;
@@ -309,3 +303,8 @@ bot.onText(/\/delete (\w+)/, async (msg, match) => {
 //       bot.sendMessage(chatId, 'An error occurred while retrieving the budget. Please try again later.');
 //   }
 // });
+// const allowedUserId = 746413249;
+// if (msg.from.id !== allowedUserId) {
+//   bot.sendMessage(chatId, "You don't have enough permissions to use this command.");
+//   return;
+// }
