@@ -60,7 +60,6 @@ jobs:
           gcloud run services add-iam-policy-binding ${{ env.SERVICE }} \
           --member="allUsers" \
           --role="roles/run.invoker" \
-          --allow-unauthenticated \
           --region ${{ env.REGION }}
 
       - name: Show Output
