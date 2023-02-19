@@ -26,32 +26,69 @@ client.connect((err) => {
 
 const app = express();
 
-app.listen(3000, () => {
-  console.log('Server started on port 3000');
+// app.listen(3000, () => {
+//   console.log(`Webhook server is listening on port 3000`);
+// });
+
+// Handle POST requests to the /webhook route
+app.post(`/webhook/${BOT_TOKEN}`, (req, res) => {
+  bot.processUpdate(req.body);
+  res.sendStatus(200);
 });
+
+// Show the budget
+// bot.onText(/\/budget/, async (msg) => {
+//   const chatId = msg.chat.id;
+//   try {
+//     const result = await client.query(`
+//       SELECT category, SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as total_income, 
+//       SUM(CASE WHEN type = 'spending' THEN amount ELSE 0 END) as total_spending, 
+//       SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) - SUM(CASE WHEN type = 'spending' THEN amount ELSE 0 END) as balance 
+//       FROM budget WHERE date_of_transaction >= DATE_TRUNC('month', CURRENT_DATE) 
+//       GROUP BY category`);
+//     const budget = result.rows;
+//     let curr = '€';
+//     let budgetMessage = `*Budget for the current month:*\n\n`;
+//     budget.forEach((row) => {
+//       budgetMessage += `${row.category}: ${curr}${row.total_income.toFixed(2)} income, ${curr}${row.total_spending.toFixed(2)} spending, balance: ${curr}${row.balance.toFixed(2)}\n`;
+//     });
+//     bot.sendMessage(chatId, budgetMessage, {parse_mode: 'Markdown'});
+//   } catch (error) {
+//       console.error(error);
+//       bot.sendMessage(chatId, 'An error occurred while retrieving the budget. Please try again later.');
+//   }
+// });
 
 // Start message
 bot.onText(/\/start/, (msg) => {
   functions.start(bot, msg);
 });
 
+// const allowedUserId = 746413249;
+// if (msg.from.id !== allowedUserId) {
+//   bot.sendMessage(chatId, "You don't have enough permissions to use this command.");
+//   return;
+// }
+
 // Get list of transactions by express
-app.get('/last', async (req, res) => {
+bot.onText(/\/last/, async (msg) => {
+  const chatId = msg.chat.id;
+  const userId = msg.from.id;
+
   try {
     const result = await client.query(`
-      SELECT type, category, amount, date_of_transaction 
+      SELECT type, category, amount, TO_CHAR(date_of_transaction, 'YY/MM/DD HH24:MI:SS') as formatted_date 
       FROM budget
       WHERE date_of_transaction >= DATE_TRUNC('month', CURRENT_DATE)
-      GROUP BY date_of_transaction, id`);
+      GROUP BY formatted_date, category, type, amount`);
     const budget = result.rows;
     let transactionsList = 'The list of transactions:\n\n';
     budget.forEach((row) => {
-      transactionsList += `${row.id} | ${row.type} | ${row.category} | ${row.amount}\n`;
+      transactionsList += `${row.formatted_date} | ${row.type} | ${row.category} | ${row.amount}\n`;
     });
-    res.send(transactionsList);
+    bot.sendMessage(chatId, transactionsList);
   } catch (error) {
-    console.error(error);
-    res.status(500).send('An error occurred while retrieving the list of transactions. Please try again later.');
+      console.error(error);
   }
 });
 
@@ -60,12 +97,12 @@ bot.onText(/\/budget/, async (msg) => {
   const chatId = msg.chat.id;
   try {
     const result = await client.query(`
-    SELECT category, SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as Planned,
-    SUM(CASE WHEN type = 'spending' THEN amount ELSE 0 END) as spent,
-    SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) - SUM(CASE WHEN type = 'spending' THEN amount ELSE 0 END) as balance
-    FROM budget
-    GROUP BY category
-    HAVING SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) - SUM(CASE WHEN type = 'spending' THEN amount ELSE 0 END) > 0;
+      SELECT category, SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as Planned,
+      SUM(CASE WHEN type = 'spending' THEN amount ELSE 0 END) as spent,
+      SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) - SUM(CASE WHEN type = 'spending' THEN amount ELSE 0 END) as balance
+      FROM budget
+      GROUP BY category
+      HAVING SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) - SUM(CASE WHEN type = 'spending' THEN amount ELSE 0 END) > 0;
     `);
     const budget = result.rows;
     let curr = currency;
@@ -83,28 +120,31 @@ bot.onText(/\/budget/, async (msg) => {
 // Add a new transaction
 bot.onText(/\/add/, (msg) => {
   const chatId = msg.chat.id;
-  const opts = {
+  const spending = {
     reply_markup: {
       keyboard: [
         [
-          { text: 'Добавить транзакцию' }
+          { 
+            text: 'Добавить расход',
+            command: 'spending'
+          }
         ]
       ]
     }
   };
-  bot.sendMessage(chatId, 'Что бы Вы хотели добавить? (income || spending)', opts);
+  bot.sendMessage(chatId, 'Что бы Вы хотели добавить? (income || spending)', spending);
   bot.once('message', (msg) => {
     const transactionType = msg.text.toLowerCase();
     if (transactionType !== 'income' && transactionType !== 'spending') {
       bot.sendMessage(chatId, 'Invalid transaction type. Please try again.');
     } else {
-      bot.sendMessage(chatId, 'What is the amount of the transaction?', opts);
+      bot.sendMessage(chatId, 'What is the amount of the transaction?');
       bot.once('message', (msg) => {
         const amount = parseFloat(msg.text);
         if (isNaN(amount) && amount<=0) {
-          bot.sendMessage(chatId, 'Invalid amount. Please try again.', opts);
+          bot.sendMessage(chatId, 'Invalid amount. Please try again.');
         } else {
-          bot.sendMessage(chatId, `What category does this ${transactionType} belong to?`, opts);
+          bot.sendMessage(chatId, `What category does this ${transactionType} belong to?`);
           bot.once('message', async (msg) => {
             const category = msg.text;
             try {
@@ -112,11 +152,11 @@ bot.onText(/\/add/, (msg) => {
                 INSERT INTO budget (category, type, amount)
                 VALUES ($1, $2, $3)`,
                 [category, transactionType, amount]);
-                bot.sendMessage(chatId, `${transactionType} added successfully.`, opts);
+                bot.sendMessage(chatId, `${transactionType} added successfully.`);
                 console.log(result);
             } catch (err) {
                 console.error(err);
-                bot.sendMessage(chatId, `Transaction failed to add. Please try again.`, opts);
+                bot.sendMessage(chatId, `Transaction failed to add. Please try again.`);
             }
           });
         }
