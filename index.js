@@ -3,7 +3,9 @@ const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
 const { Client } = require('pg');
 const dotenv = require('dotenv');
+
 dotenv.config();
+const app = express();
 
 const BOT_TOKEN = `${process.env.BOT_TOKEN}`;
 const bot = new TelegramBot(BOT_TOKEN, {polling: true});
@@ -11,7 +13,7 @@ const bot = new TelegramBot(BOT_TOKEN, {polling: true});
 require('./commands/transactions')(bot);
 const currency = "€";
 
-const databaseUrl = `postgresql://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`; // 'postgresql://postgres:123654789w@localhost/expenses-dev';
+const databaseUrl = `postgresql://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`;
 const client = new Client({
   connectionString: databaseUrl,
 });
@@ -20,11 +22,9 @@ client.connect((err) => {
   if (err) {
     console.error('Error connecting to Postgres:', err);
   } else {
-    console.log('Connected to Postgres!');
+    console.log('PG connection established');
   }
 });
-
-const app = express();
 
 app.listen(3000, () => {
   console.log(`Webhook server is listening on port 3000`);
@@ -36,39 +36,16 @@ app.post(`/webhook/${BOT_TOKEN}`, (req, res) => {
   res.sendStatus(200);
 });
 
-// Show the budget
-// bot.onText(/\/budget/, async (msg) => {
-//   const chatId = msg.chat.id;
-//   try {
-//     const result = await client.query(`
-//       SELECT category, SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as total_income, 
-//       SUM(CASE WHEN type = 'spending' THEN amount ELSE 0 END) as total_spending, 
-//       SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) - SUM(CASE WHEN type = 'spending' THEN amount ELSE 0 END) as balance 
-//       FROM budget WHERE date_of_transaction >= DATE_TRUNC('month', CURRENT_DATE) 
-//       GROUP BY category`);
-//     const budget = result.rows;
-//     let curr = '€';
-//     let budgetMessage = `*Budget for the current month:*\n\n`;
-//     budget.forEach((row) => {
-//       budgetMessage += `${row.category}: ${curr}${row.total_income.toFixed(2)} income, ${curr}${row.total_spending.toFixed(2)} spending, balance: ${curr}${row.balance.toFixed(2)}\n`;
-//     });
-//     bot.sendMessage(chatId, budgetMessage, {parse_mode: 'Markdown'});
-//   } catch (error) {
-//       console.error(error);
-//       bot.sendMessage(chatId, 'An error occurred while retrieving the budget. Please try again later.');
-//   }
-// });
-
 // Start message
 bot.onText(/\/start/, (msg) => {
   functions.start(bot, msg);
 });
 
-// const allowedUserId = 746413249;
-// if (msg.from.id !== allowedUserId) {
-//   bot.sendMessage(chatId, "You don't have enough permissions to use this command.");
-//   return;
-// }
+const allowedUserId = 746413249;
+if (msg.from.id !== allowedUserId) {
+  bot.sendMessage(chatId, "You don't have enough permissions to use this command.");
+  return;
+}
 
 // Get list of transactions by express
 bot.onText(/\/last/, async (msg) => {
@@ -76,11 +53,12 @@ bot.onText(/\/last/, async (msg) => {
   const userId = msg.from.id;
 
   try {
-    const result = await client.query(`
-      SELECT type, category, amount, TO_CHAR(date_of_transaction, 'YY/MM/DD HH24:MI:SS') as formatted_date 
+    const result = await client.query(
+      `SELECT type, category, amount, TO_CHAR(date_of_transaction, 'YY/MM/DD HH24:MI:SS') as formatted_date 
       FROM budget
       WHERE date_of_transaction >= DATE_TRUNC('month', CURRENT_DATE)
-      GROUP BY formatted_date, category, type, amount`);
+      GROUP BY formatted_date, category, type, amount`
+    );
     const budget = result.rows;
     let transactionsList = 'The list of transactions:\n\n';
     budget.forEach((row) => {
@@ -97,14 +75,14 @@ bot.onText(/\/last/, async (msg) => {
 bot.onText(/\/budget/, async (msg) => {
   const chatId = msg.chat.id;
   try {
-    const result = await client.query(`
-      SELECT category, SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as Planned,
+    const result = await client.query(
+      `SELECT category, SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as Planned,
       SUM(CASE WHEN type = 'spending' THEN amount ELSE 0 END) as spent,
       SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) - SUM(CASE WHEN type = 'spending' THEN amount ELSE 0 END) as balance
       FROM budget
       GROUP BY category
-      HAVING SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) - SUM(CASE WHEN type = 'spending' THEN amount ELSE 0 END) > 0;
-    `);
+      HAVING SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) - SUM(CASE WHEN type = 'spending' THEN amount ELSE 0 END) > 0;`
+    );
     const budget = result.rows;
     let curr = currency;
     let budgetReport = 'Текущий бюджет:\n\n';
@@ -308,4 +286,26 @@ bot.onText(/\/delete (\w+)/, async (msg, match) => {
 //       bot.sendMessage(chatId, `Transaction failed to update. Please try again.`);
 //     }
 //   });
+// });
+// Show the budget
+// bot.onText(/\/budget/, async (msg) => {
+//   const chatId = msg.chat.id;
+//   try {
+//     const result = await client.query(`
+//       SELECT category, SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) as total_income, 
+//       SUM(CASE WHEN type = 'spending' THEN amount ELSE 0 END) as total_spending, 
+//       SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) - SUM(CASE WHEN type = 'spending' THEN amount ELSE 0 END) as balance 
+//       FROM budget WHERE date_of_transaction >= DATE_TRUNC('month', CURRENT_DATE) 
+//       GROUP BY category`);
+//     const budget = result.rows;
+//     let curr = '€';
+//     let budgetMessage = `*Budget for the current month:*\n\n`;
+//     budget.forEach((row) => {
+//       budgetMessage += `${row.category}: ${curr}${row.total_income.toFixed(2)} income, ${curr}${row.total_spending.toFixed(2)} spending, balance: ${curr}${row.balance.toFixed(2)}\n`;
+//     });
+//     bot.sendMessage(chatId, budgetMessage, {parse_mode: 'Markdown'});
+//   } catch (error) {
+//       console.error(error);
+//       bot.sendMessage(chatId, 'An error occurred while retrieving the budget. Please try again later.');
+//   }
 // });

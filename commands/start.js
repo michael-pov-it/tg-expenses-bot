@@ -1,10 +1,4 @@
 // START
-// const commands = [
-//   { text: 'Показать бюджет', command: '/budget' },
-//   { text: 'Добавить транзакцию', command: '/add' },
-//   { text: 'Транзакции за текущий месяц', command: 'last' },
-// ];
-
 const dotenv = require('dotenv');
 dotenv.config();
 const { Client } = require('pg');
@@ -20,13 +14,6 @@ const client = new Client({
 
 // START
 exports.start = (bot, msg) => {
-  // const options = {
-  //   reply_markup: {
-  //     keyboard: commands.map(c => [c.text]),
-  //     resize_keyboard: true,
-  //     one_time_keyboard: true,
-  //   },
-  // };
   bot.sendMessage(
     msg.chat.id,
     `Добро пожаловать в бюджет бот!\n
@@ -40,7 +27,9 @@ exports.start = (bot, msg) => {
 const showTransactions = async (bot, msg) => {
   const chatId = msg.chat.id;
   try {
-    const result = await client.query(`SELECT id, type, category, amount FROM budget GROUP BY id, type, category, amount`);
+    const result = await client.query(
+      `SELECT id, type, category, amount FROM budget GROUP BY id, type, category, amount`
+    );
     const budget = result.rows;
     let transactionsList = 'The list of transactions:\n\n';
     budget.forEach((row) => {
@@ -49,7 +38,9 @@ const showTransactions = async (bot, msg) => {
     bot.sendMessage(chatId, transactionsList);
   } catch (error) {
     console.error(error);
-    bot.sendMessage(chatId, 'An error occurred while retrieving the list of transactions. Please try again later.');
+    bot.sendMessage(
+      chatId, 'An error occurred while retrieving the list of transactions. Please try again later.'
+    );
   }
 };
   
