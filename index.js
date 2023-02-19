@@ -26,9 +26,9 @@ client.connect((err) => {
 
 const app = express();
 
-// app.listen(3000, () => {
-//   console.log(`Webhook server is listening on port 3000`);
-// });
+app.listen(3000, () => {
+  console.log(`Webhook server is listening on port 3000`);
+});
 
 // Handle POST requests to the /webhook route
 app.post(`/webhook/${BOT_TOKEN}`, (req, res) => {
@@ -225,7 +225,7 @@ bot.onText(/\/update/, (msg) => {
   });
 });
 
-// Delete ?
+// Delete
 bot.onText(/\/delete (\w+)/, async (msg, match) => {
   const chatId = msg.chat.id;
   const category = match[1];
