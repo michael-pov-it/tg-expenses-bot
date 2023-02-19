@@ -181,11 +181,11 @@ bot.onText(/\/update/, (msg) => {
           const spending = parseFloat(msg.text);
     
           try {
-            await client.query(`
-              UPDATE budget
+            await client.query(
+              `UPDATE budget
               SET income = $1, spending = $2
-              WHERE category = $3
-            `, [income, spending, category]);
+              WHERE category = $3`
+            , [income, spending, category]);
     
             bot.sendMessage(chatId, `${category} has been updated.\n` +
               `New income: ${income}\n` +

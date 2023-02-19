@@ -55,7 +55,6 @@ jobs:
             NODE_ENV=DEV
             CURRENCY=EUR
             LANG=ENG
-            PORT=3000
 
       - run: |
           gcloud run services add-iam-policy-binding ${{ env.SERVICE }} \
