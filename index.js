@@ -87,6 +87,7 @@ bot.onText(/\/last/, async (msg) => {
       transactionsList += `${row.formatted_date} | ${row.type} | ${row.category} | ${row.amount}\n`;
     });
     bot.sendMessage(chatId, transactionsList);
+    console.log(`User ID: ${userId}`);
   } catch (error) {
       console.error(error);
   }
@@ -120,19 +121,7 @@ bot.onText(/\/budget/, async (msg) => {
 // Add a new transaction
 bot.onText(/\/add/, (msg) => {
   const chatId = msg.chat.id;
-  const spending = {
-    reply_markup: {
-      keyboard: [
-        [
-          { 
-            text: 'Добавить расход',
-            command: 'spending'
-          }
-        ]
-      ]
-    }
-  };
-  bot.sendMessage(chatId, 'Что бы Вы хотели добавить? (income || spending)', spending);
+  bot.sendMessage(chatId, 'Что бы Вы хотели добавить? (income || spending)');
   bot.once('message', (msg) => {
     const transactionType = msg.text.toLowerCase();
     if (transactionType !== 'income' && transactionType !== 'spending') {
