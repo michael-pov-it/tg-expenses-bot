@@ -14,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Cloud cli
+      - name: Setup Cloud CLI
         uses: google-github-actions/setup-gcloud@v0.2.0
         with:
           project_id: ${{ env.GCP_PROJECT_ID }}
@@ -26,7 +26,7 @@ jobs:
 
       - name: Build and Push Container
         run: |-
-          docker build -t eu.gcr.io/${{ env.GCP_PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }} .
+          docker build . -t eu.gcr.io/${{ env.GCP_PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }}
           docker push eu.gcr.io/${{ env.GCP_PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }}
 
   deploy:
@@ -35,7 +35,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Setup Cloud cli
+      - name: Setup Cloud CLI
         uses: google-github-actions/setup-gcloud@v0.2.0
         with:
           project_id: ${{ env.GCP_PROJECT_ID }}
@@ -50,7 +50,11 @@ jobs:
           image: eu.gcr.io/${{ env.GCP_PROJECT_ID }}/${{ env.SERVICE }}:${{ github.sha }}
           region: ${{ env.REGION }}
           
-      - run: gcloud run services add-iam-policy-binding ${{ env.SERVICE }} --member="allUsers" --role="roles/run.invoker" --region ${{ env.REGION }}
+      - run: |
+          gcloud run services add-iam-policy-binding ${{ env.SERVICE }} \
+          --member="allUsers" \
+          --role="roles/run.invoker" \
+          --region ${{ env.REGION }}
 
       - name: Show Output
         run: curl "${{ steps.expenses-dev.outputs.url }}"
