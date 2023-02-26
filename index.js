@@ -38,22 +38,22 @@ app.post(`/webhook/${BOT_TOKEN}`, (req, res) => {
 // Create a buttons to run commands
 const startButton = {
   text: 'START BOT',
-  callback_data: '/start',
+  callback_data: 'start',
 };
 
 const budjetButton = {
   text: 'Get current budget',
-  callback_data: '/budget',
+  callback_data: 'budget',
 };
 
 const lastButton = {
   text: 'Latest transactions',
-  callback_data: '/last',
+  callback_data: 'last',
 };
 
 const addButton = {
   text: 'Add a new transaction',
-  callback_data: '/add',
+  callback_data: 'add',
 };
 
 // Create a keyboard with the start button
@@ -72,17 +72,33 @@ bot.on('callback_query', (callbackQuery) => {
   const chatId = message.chat.id;
   const command = callbackQuery.data;
 
-  if (command === '/start') {
-    bot.sendMessage(chatId, 'Starting bot...');
+  if (command === 'start') {
+    bot.sendMessage(chatId, '/start');
     bot.sendChatAction(chatId, 'typing');
     bot.emit('text', message);
   }
+  if (command === 'budget') {
+    bot.sendMessage(chatId, '/budget');
+    bot.sendChatAction(chatId, 'typing');
+    bot.emit('text', message);
+  }
+  if (command === 'last') {
+    bot.sendMessage(chatId, '/last');
+    bot.sendChatAction(chatId, 'typing');
+    bot.emit('text', message);
+  }
+  if (command === 'add') {
+    bot.sendMessage(chatId, '/add');
+    bot.sendChatAction(chatId, 'typing');
+    bot.emit('text', message);
+  }
+  else bot.sendMessage(chatId, 'Команды не верна');
 });
 
 // Send the keyboard with the start button to the user
 bot.onText(/\/keyboard/, (msg) => {
   const chatId = msg.chat.id;
-  bot.sendMessage(chatId, 'Here is your keyboard!', {
+  bot.sendMessage(chatId, 'Список команд:', {
     reply_markup: keyboard,
   });
 });
