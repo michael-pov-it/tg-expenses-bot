@@ -1,4 +1,4 @@
-//const functions = require("./commands/functions");
+const functions = require("./commands/functions");
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
 const { Client } = require('pg');
@@ -10,7 +10,6 @@ const app = express();
 const BOT_TOKEN = `${process.env.BOT_TOKEN}`;
 const bot = new TelegramBot(BOT_TOKEN, {polling: true});
 
-require('./commands/transactions')(bot);
 let currency = "${process.env.CURRENCY}" == "EUR" ? "€" : "$";
 
 const databaseUrl = `postgresql://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`;
@@ -22,7 +21,7 @@ client.connect((err) => {
   if (err) {
     console.error('Error connecting to Postgres:', err);
   } else {
-    console.log('PG connection established');
+    console.log('PG connection established successfully!');
   }
 });
 
@@ -36,16 +35,34 @@ app.post(`/webhook/${BOT_TOKEN}`, (req, res) => {
   res.sendStatus(200);
 });
 
-// Create a button to run the /start command
+// Create a buttons to run commands
 const startButton = {
   text: 'START BOT',
   callback_data: '/start',
+};
+
+const budjetButton = {
+  text: 'Get current budget',
+  callback_data: '/budget',
+};
+
+const lastButton = {
+  text: 'Latest transactions',
+  callback_data: '/last',
+};
+
+const addButton = {
+  text: 'Add a new transaction',
+  callback_data: '/add',
 };
 
 // Create a keyboard with the start button
 const keyboard = {
   inline_keyboard: [
     [startButton],
+    [budjetButton],
+    [lastButton],
+    [addButton],
   ],
 };
 
@@ -70,9 +87,9 @@ bot.onText(/\/keyboard/, (msg) => {
   });
 });
 
-// bot.onText(/\/start/, (msg) => {
-//   functions.start(bot, msg);
-// });
+bot.onText(/\/start/, (msg) => {
+  functions.start(bot, msg);
+});
 
 // Get list of transactions by express
 bot.onText(/\/last/, async (msg) => {
@@ -88,11 +105,12 @@ bot.onText(/\/last/, async (msg) => {
     );
     const budget = result.rows;
     let transactionsList = 'The list of transactions:\n\n';
+    let currentUser = `User ID: ${userId}`;
     budget.forEach((row) => {
       transactionsList += `${row.formatted_date} | ${row.type} | ${row.category} | ${row.amount}\n`;
     });
     bot.sendMessage(chatId, transactionsList);
-    console.log(`User ID: ${userId}`);
+    console.log(currentUser);
   } catch (error) {
       console.error(error);
   }
