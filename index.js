@@ -108,7 +108,7 @@ bot.onText(/\/budget/, async (msg) => {
       SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) - SUM(CASE WHEN type = 'spending' THEN amount ELSE 0 END) as balance
       FROM budget
       GROUP BY category
-      HAVING SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) - SUM(CASE WHEN type = 'spending' THEN amount ELSE 0 END) > 0;`
+      HAVING SUM(CASE WHEN type = 'income' THEN amount ELSE 0 END) - SUM(CASE WHEN type = 'spending' THEN amount ELSE 0 END) >= 0;`
     );
     const budget = result.rows;
     let curr = currency;
@@ -172,6 +172,7 @@ bot.onText(/\/list (income|spending)/, (msg, match) => {
         response += `${row.category}: ${currency}${row.amount}\n`;
       }
       bot.sendMessage(chatId, response);
+      console.log(msg.from.id);
     })
     .catch((error) => {
       console.error(error);
