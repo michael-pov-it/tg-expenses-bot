@@ -16,11 +16,9 @@ exports.start = (bot, msg) => {
   const chatId = msg.chat.id;
   bot.sendMessage(
     chatId,
-    `Добро пожаловать в бюджет бот!\n
-    https://expenses-dev-cqetgkfjsa-lm.a.run.app/\n
-    /budget - Текущий Бюджет\n
-    /add - Добавить транзакцию\n
-    /last - Список транзакций за текущий месяц`
+    `Добро пожаловать в мой бот!\n
+    https://expenses-dev-cqetgkfjsa-lm.a.run.app/ - запустить\n
+    /keyboard - Список комманд`
   );
 }
 
