@@ -1,4 +1,4 @@
-const functions = require("./commands/start");
+//const functions = require("./commands/functions");
 const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
 const { Client } = require('pg');
@@ -11,7 +11,7 @@ const BOT_TOKEN = `${process.env.BOT_TOKEN}`;
 const bot = new TelegramBot(BOT_TOKEN, {polling: true});
 
 require('./commands/transactions')(bot);
-const currency = "€";
+let currency = "${process.env.CURRENCY}" == "EUR" ? "€" : "$";
 
 const databaseUrl = `postgresql://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`;
 const client = new Client({
@@ -36,12 +36,17 @@ app.post(`/webhook/${BOT_TOKEN}`, (req, res) => {
   res.sendStatus(200);
 });
 
-// Start message
-
 // Create a button to run the /start command
 const startButton = {
   text: 'START BOT',
   callback_data: '/start',
+};
+
+// Create a keyboard with the start button
+const keyboard = {
+  inline_keyboard: [
+    [startButton],
+  ],
 };
 
 // Handle the button click event
@@ -57,13 +62,6 @@ bot.on('callback_query', (callbackQuery) => {
   }
 });
 
-// Create a keyboard with the start button
-const keyboard = {
-  inline_keyboard: [
-    [startButton],
-  ],
-};
-
 // Send the keyboard with the start button to the user
 bot.onText(/\/keyboard/, (msg) => {
   const chatId = msg.chat.id;
@@ -72,9 +70,9 @@ bot.onText(/\/keyboard/, (msg) => {
   });
 });
 
-bot.onText(/\/start/, (msg) => {
-  functions.start(bot, msg);
-});
+// bot.onText(/\/start/, (msg) => {
+//   functions.start(bot, msg);
+// });
 
 // Get list of transactions by express
 bot.onText(/\/last/, async (msg) => {
