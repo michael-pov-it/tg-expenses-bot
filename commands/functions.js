@@ -8,6 +8,9 @@ exports.start = (bot, msg) => {
     chatId,
     `Добро пожаловать в мой бот!\n
     https://expenses-dev-cqetgkfjsa-lm.a.run.app/ - запустить\n
-    /budget - view your current budget\n`
+    /categories - list of categories\n
+    /delete + category\'s name - delete category\n
+    /budget - view your current budget\n
+    /transactions - view list of last transactions`
   );
 }
