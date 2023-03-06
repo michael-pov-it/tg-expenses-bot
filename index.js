@@ -3,10 +3,8 @@ const TelegramBot = require('node-telegram-bot-api');
 const express = require('express');
 const { Client } = require('pg');
 const dotenv = require('dotenv');
-const e = require("express");
 
 dotenv.config();
-const app = express();
 
 const BOT_TOKEN = `${process.env.BOT_TOKEN}`;
 const bot = new TelegramBot(BOT_TOKEN, {polling: true});
@@ -27,6 +25,19 @@ client.connect((err) => {
   }
 });
 
+// Async functions
+async function getCategories() {
+  try {
+    const result = await client.query('SELECT DISTINCT category FROM budget');
+    const categories = result.rows.map((row) => row.category);
+    return categories;
+  } catch (error) {
+    console.error(error);
+    throw new Error('An error occurred while retrieving the list of categories');
+  }
+}
+
+// Start bot
 bot.onText(/\/start/, (msg) => {
   functions.start(bot, msg);
 });
@@ -34,11 +45,20 @@ bot.onText(/\/start/, (msg) => {
 // Last transactions (30 days)
 bot.onText(/\/transactions/, async (msg) => {
   const chatId = msg.chat.id;
-  const today = new Date();
-  const startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 30);
-  const sql = `SELECT * FROM budget WHERE date_of_transaction >= '${startDate.toISOString()}'`;
+  const userId        = msg.from.id;
+  const allowedUserId = '746413249';
+
+  // check if user is allowed to add transactions
+  if (userId !== allowedUserId) {
+    bot.sendMessage(chatId, "You don't have enough permissions to get the list of transactions.");
+    console.log(userId);
+    return;
+  }
 
   try {
+    // const today = new Date();
+    // const startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 30);
+    // const sql = `SELECT * FROM budget WHERE date_of_transaction >= '${startDate.toISOString()}'`;
     const result = await client.query(
       `SELECT * FROM budget WHERE date_of_transaction >= now() - interval '30 days';`
     );
@@ -106,40 +126,18 @@ bot.onText(/\/categories/, async (msg) => {
   }
 });
 
-async function getCategories() {
-  try {
-    const result = await client.query('SELECT DISTINCT category FROM budget');
-    const categories = result.rows.map((row) => row.category);
-    return categories;
-  } catch (error) {
-    console.error(error);
-    throw new Error('An error occurred while retrieving the list of categories');
-  }
-}
 
 // Add transaction
-bot.onText(/\/add/, async (msg) => {
-  const chatId        = msg.chat.id;
-  const userId        = msg.from.id;
-  const allowedUserId = '746413249';
-  let state           = "type";
-
-  // check if user is allowed to add transactions
-  if (userId === allowedUserId) {
-    bot.sendMessage(chatId, "You don't have enough permissions to add transactions.");
-    console.log("Your ID:", userId);
-    return;
-  }
+bot.onText(/\/add/, (msg) => {
+  const chatId = msg.chat.id;
+  let state = "category";
 
   const transaction = {
     type: "",
     category: "",
     amount: 0,
     comment: "",
-    user_id: userId,
   };
-
-  const categories = [];
 
   const options = {
     parse_mode: "Markdown",
@@ -148,6 +146,16 @@ bot.onText(/\/add/, async (msg) => {
       one_time_keyboard: true,
     },
   };
+
+  const categories = [
+    "Обеды",
+    "Еда",
+    "Рестораны",
+    "Бытовая Химия",
+    "Развлечения",
+    "Незапланированное",
+    "Алкоголь и доставка"
+  ];
 
   const sendMessage = (text, opts) => {
     bot.sendMessage(chatId, text, opts);
@@ -177,164 +185,99 @@ bot.onText(/\/add/, async (msg) => {
     transaction.comment = newComment;
   };
 
-  bot.sendMessage(chatId, "Please select the transaction type:", options);
-  options.reply_markup.keyboard = [["income"], ["spending"]];
-  setState("type");
-
-  try {
-    const queryResult = await client.query(
-      "SELECT DISTINCT category FROM budget"
+  const addTransaction = () => {
+    const sqlQuery = `
+    INSERT INTO budget (type, category, amount, comment, date_of_transaction, user_id)
+    VALUES ($1, $2, $3, $4, $5, $6)
+    `;
+    const currentDate = new Date();
+    const date = `${currentDate.getFullYear()}-${
+      currentDate.getMonth() + 1
+    }-${currentDate.getDate()}`;
+    client.query(
+      sqlQuery,
+      [
+        transaction.type,
+        transaction.category,
+        transaction.amount,
+        transaction.comment,
+        date,
+        msg.from.id
+      ],
+      (err, res) => {
+        if (err) {
+          sendMessage(
+            "An error occurred while adding the transaction to the database."
+          );
+          console.error(err);
+        } else {
+          sendMessage("Transaction added successfully!");
+        }
+      }
     );
-    queryResult.rows.forEach((row) => {
-      categories.push(row.category);
-    });
-  } catch (error) {
-    console.error(error);
-    sendMessage("An error occurred while retrieving the categories.");
-    return;
-  }
+  };
 
-  bot.on("message", (msg) => {
-    const text          = msg.text;
+  const handleTransaction = (type) => {
+    setType(type);
+    setState("category");
+    clearOptions();
+    options.reply_markup.keyboard = categories.map((category) => [
+      category,
+    ]);
+    sendMessage("Please select a category:", options);
 
-    switch (state) {
-      case "type":
-        if (text === "income" || text === "spending") {
-          setType(text);
-          setState("category");
-          clearOptions();
-          try {
-            categories = result.rows.map(row => row.category);
-            options.reply_markup.keyboard = categories.map(category => [category]);
+    bot.on("message", (msg) => {
+      const text = msg.text;
+      switch (state) {
+        case "category":
+          if (categories.includes(text)) {
+            setCategory(text);
+            setState("amount");
+            sendMessage("Please enter the amount:", options);
+          } else {
             sendMessage("Please select a category:", options);
-          } catch (err) {
-            console.error(err);
-            sendMessage("An error occurred while fetching categories. Please try again later.");
-            setState("done");
           }
-        } else {
-          sendMessage("Please select the transaction type:", options);
-        }
-        break;
-      case "category":
-        if (categories.includes(text)) {
-          setCategory(text);
-          setState("amount");
-          sendMessage("Please enter the amount:", options);
-        } else {
-          sendMessage("Please select a category:", options);
-        }
-        break;
-      case "amount":
-        if (!isNaN(parseFloat(text))) {
-          setAmount(text);
-          setState("comment");
-          sendMessage("Please enter a comment (optional):", options);
-        } else {
-          sendMessage("Please enter the amount:", options);
-        }
-        break;
-      case "comment":
-        setComment(text);
-        setState("done");
-        bot.off("message");
-        const sqlQuery = `INSERT INTO budget (type, category, amount, comment, user_id, date_of_transaction) VALUES ($1, $2, $3, $4, $5, $6)`;
-        const currentDate = new Date();
-        const date = currentDate.getDate();
-        // const date = `${currentDate.getFullYear()}-${
-        //   currentDate.getMonth() + 1
-        // }-${currentDate.getDate()}`;
-        client.query(
-          sqlQuery,
-          [
-            transaction.type,
-            transaction.category,
-            transaction.amount,
-            transaction.comment,
-            transaction.user_id,
-            date,
-          ],
-          (err, res) => {
-            if (err) {
-              sendMessage(
-                "An error occurred while adding the transaction to the database."
-              );
-              console.error(err);
-            } else {
-              sendMessage("Transaction added successfully!");
-              console.log(res);
-            }
+          break;
+        case "amount":
+          if (!isNaN(parseFloat(text))) {
+            setAmount(text);
+            setState("comment");
+            sendMessage("Please enter a comment (optional):", options);
+          } else {
+            sendMessage("Please enter the amount:", options);
           }
-        );
-        break;
-      default:
-        sendMessage("An error occurred.");
-        break;
+          break;
+        case "comment":
+          setComment(text);
+          setState("done");
+          bot.off("message");
+          addTransaction();
+          break;
+        default:
+          sendMessage("An error occurred.");
+          break;
+      }
+    });
+  };
+
+  options.reply_markup.keyboard = [["income"], ["spending"]];
+  sendMessage("Please select the transaction type:", options);
+  clearOptions();
+
+  bot.once("message", (msg) => {
+    const text = msg.text.toLowerCase();
+    if (text === "income") {
+      handleTransaction("income");
+    } else if (text === "spending") {
+      handleTransaction("spending");
+    } else {
+      options.reply_markup.keyboard = [["income"], ["spending"]];
+      sendMessage("Please select the transaction type:", options);
+      clearOptions();
     }
   });
 });
 
-
-bot.onText(/^\+$/, async (msg) => {
-  const chatId        = msg.chat.id;
-  const userId        = msg.from.id;
-  const allowedUserId = '746413249';
-
-  // check if user is allowed to add transactions
-  if (userId === allowedUserId) {
-    bot.sendMessage(chatId, "You don't have enough permissions to add transactions.");
-    console.log(userId);
-    return;
-  }
-
-  try {
-      const categories = await getCategories();
-      const options = {
-        reply_markup: JSON.stringify({
-          keyboard: [categories],
-          one_time_keyboard: true,
-        }),
-      };
-      bot.sendMessage(chatId, 'Select + for income and - for spending::');
-      bot.once('message', async (msg) => {
-        if (msg.text === '+' || msg.text === '-') {
-          const type = msg.text === '+' ? 'income' : 'spending';
-          bot.sendMessage(chatId, 'Choose a category:', options);
-          bot.once('message', async (msg) => {
-            const category = msg.text;
-  
-            bot.sendMessage(chatId, 'Enter the amount:');
-            bot.once('message', async (msg) => {
-              if (isNaN(msg.text) || msg.text <= 0) {
-                bot.sendMessage(chatId, 'Please enter a valid amount.');
-                return;
-              }
-              const amount = msg.text;
-              bot.sendMessage(chatId, `Adding ${type} of ${currency}${amount} to "${category}" category\nPlease add the comment to this transaction:`);
-              if (msg.text === '-' || msg.text === 'cancel' || msg.text === 'отмена') {
-                bot.sendMessage(chatId, 'Cancelled | Отменено.');
-                return;
-              }
-              const comment = msg.text;
-              try {
-                await client.query('INSERT INTO budget (type, category, amount, comment) VALUES ($1, $2, $3, $4)', [type, category, amount, comment]);
-                bot.sendMessage(chatId, `The transaction of  ${currency}${amount} for "${category}" category has been added as ${type}.`);
-              } catch (error) {
-                console.error(error);
-                bot.sendMessage(chatId, 'An error occurred while adding the transaction. Please try again later.');
-              }
-            });
-          });
-        } else {
-          bot.sendMessage(chatId, 'Please try again from + command!\nChoose either "+" for income or "-" for spending.');
-          return;
-        }
-      });
-    } catch (error) {
-      console.error(error);
-      bot.sendMessage(chatId, 'An error occurred while adding the transaction. Please try again later.');
-    }
-});
 
 // Delete Category
 bot.onText(/\/delete (.+)/, async (msg, match) => {
@@ -362,6 +305,66 @@ bot.onText(/\/delete (.+)/, async (msg, match) => {
   }
 });
 
+// bot.onText(/^\+$/, async (msg) => {
+//   const chatId        = msg.chat.id;
+//   const userId        = msg.from.id;
+//   const allowedUserId = '746413249';
+
+//   // check if user is allowed to add transactions
+//   if (userId === allowedUserId) {
+//     bot.sendMessage(chatId, "You don't have enough permissions to add transactions.");
+//     console.log(userId);
+//     return;
+//   }
+
+//   try {
+//       const categories = await getCategories();
+//       const options = {
+//         reply_markup: JSON.stringify({
+//           keyboard: [categories],
+//           one_time_keyboard: true,
+//         }),
+//       };
+//       bot.sendMessage(chatId, 'Select + for income and - for spending::');
+//       bot.once('message', async (msg) => {
+//         if (msg.text === '+' || msg.text === '-') {
+//           const type = msg.text === '+' ? 'income' : 'spending';
+//           bot.sendMessage(chatId, 'Choose a category:', options);
+//           bot.once('message', async (msg) => {
+//             const category = msg.text;
+  
+//             bot.sendMessage(chatId, 'Enter the amount:');
+//             bot.once('message', async (msg) => {
+//               if (isNaN(msg.text) || msg.text <= 0) {
+//                 bot.sendMessage(chatId, 'Please enter a valid amount.');
+//                 return;
+//               }
+//               const amount = msg.text;
+//               bot.sendMessage(chatId, `Adding ${type} of ${currency}${amount} to "${category}" category\nPlease add the comment to this transaction:`);
+//               if (msg.text === '-' || msg.text === 'cancel' || msg.text === 'отмена') {
+//                 bot.sendMessage(chatId, 'Cancelled | Отменено.');
+//                 return;
+//               }
+//               const comment = msg.text;
+//               try {
+//                 await client.query('INSERT INTO budget (type, category, amount, comment) VALUES ($1, $2, $3, $4)', [type, category, amount, comment]);
+//                 bot.sendMessage(chatId, `The transaction of  ${currency}${amount} for "${category}" category has been added as ${type}.`);
+//               } catch (error) {
+//                 console.error(error);
+//                 bot.sendMessage(chatId, 'An error occurred while adding the transaction. Please try again later.');
+//               }
+//             });
+//           });
+//         } else {
+//           bot.sendMessage(chatId, 'Please try again from + command!\nChoose either "+" for income or "-" for spending.');
+//           return;
+//         }
+//       });
+//     } catch (error) {
+//       console.error(error);
+//       bot.sendMessage(chatId, 'An error occurred while adding the transaction. Please try again later.');
+//     }
+// });
 // Listen for messages
 // bot.on('message', async (msg) => {
 //   const chatId = msg.chat.id;
