@@ -11,6 +11,7 @@ exports.start = (bot, msg) => {
     /categories - list of categories\n
     /delete + category\'s name - delete category\n
     /budget - view your current budget\n
-    /transactions - view list of last transactions`
+    /transactions - view list of last transactions\n
+    /add`
   );
 }
