@@ -1,10 +1,17 @@
 const functions = require("./commands/functions");
 const TelegramBot = require('node-telegram-bot-api');
-// const express = require('express');
+const express = require('express');
+const bodyParser = require("body-parser");
 const { Client } = require('pg');
 const dotenv = require('dotenv');
 
 dotenv.config();
+const app = express();
+app.use(bodyParser.json());
+
+app.listen(3000, () => {
+  console.log("Express server listening on port 3000");
+});
 
 const BOT_TOKEN = `${process.env.BOT_TOKEN}`;
 const bot = new TelegramBot(BOT_TOKEN, {polling: true});
@@ -25,21 +32,16 @@ client.connect((err) => {
   }
 });
 
-// Async functions
-async function getCategories() {
-  try {
-    const result = await client.query('SELECT DISTINCT category FROM budget');
-    const categories = result.rows.map((row) => row.category);
-    return categories;
-  } catch (error) {
-    console.error(error);
-    throw new Error('An error occurred while retrieving the list of categories');
-  }
-}
-
 // Start bot
 bot.onText(/\/start/, (msg) => {
   functions.start(bot, msg);
+});
+
+// define a command handler for the /echo command using the onText method, which sends the received text back to the chat.
+bot.onText(/\/echo (.+)/, (msg, match) => {
+  const chatId = msg.chat.id;
+  const text = match[1];
+  bot.sendMessage(chatId, text);
 });
 
 // Show current budget
