@@ -1,6 +1,6 @@
 {
-  "name": "tg-bot-expenses",
-  "version": "0.1.1-beta",
+  "name": "tg-bot-family",
+  "version": "0.2.0-beta",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -9,7 +9,7 @@
   "keywords": [
     "tg-bot",
     "bot",
-    "ai"
+    "family-bot"
   ],
   "author": "Mike_The_Engineer",
   "license": "GNU",
@@ -17,8 +17,5 @@
     "dotenv": "^16.0.3",
     "node-telegram-bot-api": "^0.61.0",
     "pg": "^8.9.0"
-  },
-  "dependencies": {
-    "express": "^4.18.2"
   }
 }
