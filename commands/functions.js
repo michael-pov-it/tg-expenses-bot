@@ -7,7 +7,7 @@ exports.start = (bot, msg) => {
   bot.sendMessage(
     chatId,
     `Добро пожаловать в мой бот!\n
-    https://expenses-dev-cqetgkfjsa-lm.a.run.app/ - запустить\n
+    https://tg-expenses-bot-zvh6xv3kha-uc.a.run.app/ - запустить\n
     /categories - list of categories\n
     /delete + category\'s name - delete category\n
     /budget - view your current budget\n
