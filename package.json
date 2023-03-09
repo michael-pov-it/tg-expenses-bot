@@ -1,6 +1,6 @@
 {
-  "name": "tg-bot-family",
-  "version": "0.2.0-beta",
+  "name": "family-bot",
+  "version": "0.3.0-beta",
   "description": "",
   "main": "index.js",
   "scripts": {
