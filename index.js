@@ -44,6 +44,19 @@ bot.onText(/\/echo (.+)/, (msg, match) => {
   bot.sendMessage(chatId, text);
 });
 
+bot.onText(/\/menu/, (msg) => {
+  const chatId = msg.chat.id;
+  const replyMarkup = {
+    inline_keyboard: [
+      [
+        { text: 'Start bot', switch_inline_query_current_chat: '/start' },
+        { text: 'Add transaction', switch_inline_query_current_chat: '/add' }
+      ]
+    ]
+  };
+  bot.sendMessage(chatId, 'Click the button below to open the menu:', { reply_markup: replyMarkup });
+});
+
 // Show current budget
 bot.onText(/\/budget/, async (msg) => {
   const chatId = msg.chat.id;
@@ -81,14 +94,6 @@ bot.onText(/\/add/, (msg) => {
     comment: "",
   };
 
-  const options = {
-    parse_mode: "Markdown",
-    reply_markup: {
-      keyboard: [],
-      one_time_keyboard: true,
-    },
-  };
-
   const categories = [
     "Обеды",
     "Еда",
@@ -98,6 +103,21 @@ bot.onText(/\/add/, (msg) => {
     "Незапланированное",
     "Алкоголь и доставка"
   ];
+
+  const options = {
+    parse_mode: "Markdown",
+    reply_markup: {
+      keyboard: [],
+      one_time_keyboard: true,
+    },
+  };
+
+  const cat_options = {
+    reply_markup: {
+      keyboard: [categories],
+      one_time_keyboard: true,
+    },
+  };
 
   const sendMessage = (text, opts) => {
     bot.sendMessage(chatId, text, opts);
@@ -166,7 +186,7 @@ bot.onText(/\/add/, (msg) => {
     options.reply_markup.keyboard = categories.map((category) => [
       category,
     ]);
-    sendMessage("Please select a category:", options);
+    sendMessage("Please select a category:", cat_options);
 
     bot.on("message", (msg) => {
       const text = msg.text;
@@ -224,9 +244,9 @@ bot.onText(/\/add/, (msg) => {
 
 // Last transactions (30 days)
 bot.onText(/\/transactions/, async (msg) => {
-  const chatId = msg.chat.id;
+  const chatId        = msg.chat.id;
   const userId        = msg.from.id;
-  const allowedUserId = '746413249';
+  const allowedUserId = '2134660914';
 
   // check if user is allowed to add transactions
   if (userId != allowedUserId) {
@@ -264,9 +284,9 @@ bot.onText(/\/transactions/, async (msg) => {
 
 // Show list of categories
 bot.onText(/\/categories/, async (msg) => {
-  const chatId = msg.chat.id;
+  const chatId        = msg.chat.id;
   const userId        = msg.from.id;
-  const allowedUserId = '746413249';
+  const allowedUserId = '2134660914';
 
   // check if user is allowed to add transactions
   if (userId != allowedUserId) {
@@ -293,10 +313,10 @@ bot.onText(/\/categories/, async (msg) => {
 
 // Delete Category
 bot.onText(/\/delete (.+)/, async (msg, match) => {
-  const chatId = msg.chat.id;
-  const category = match[1];
+  const chatId        = msg.chat.id;
+  const category      = match[1];
   const userId        = msg.from.id;
-  const allowedUserId = '746413249';
+  const allowedUserId = '2134660914';
 
   // check if user is allowed to add transactions
   if (userId != allowedUserId) {
