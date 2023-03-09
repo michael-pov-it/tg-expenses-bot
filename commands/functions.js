@@ -21,10 +21,8 @@ exports.start = (bot, msg) => {
 
   bot.sendMessage(
     chatId,
-    `Добро пожаловать в мой бот!\n
-    http://surl.li/fioht - запустить\n
-    /budget - view your current budget\n
-    /transactions - view list of last transactions\n
-    /add - Add transaction`, options
+    `Welcome in Gordievsky Family Bot!\n
+    http://surl.li/fioht - restart\n`
+    , options
   );
 }
