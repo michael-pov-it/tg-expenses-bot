@@ -152,6 +152,7 @@ bot.onText(/\/add/, (msg) => {
           console.error(err);
         } else {
           sendMessage("Transaction added successfully!");
+          clearOptions();
         }
       }
     );
