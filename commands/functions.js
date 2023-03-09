@@ -4,14 +4,27 @@ dotenv.config();
 // START
 exports.start = (bot, msg) => {
   const chatId = msg.chat.id;
+
+  let categories = [
+    "/start",
+    "/add",
+    "/budget",
+  ];
+
+  const options = {
+    reply_markup: {
+      resize_keyboard: true,
+      one_time_keyboard: true,
+      keyboard: [categories],
+    },
+  };
+
   bot.sendMessage(
     chatId,
     `Добро пожаловать в мой бот!\n
-    https://tg-expenses-bot-zvh6xv3kha-uc.a.run.app/ - запустить\n
-    /categories - list of categories\n
-    /delete + category\'s name - delete category\n
+    http://surl.li/fioht - запустить\n
     /budget - view your current budget\n
     /transactions - view list of last transactions\n
-    /add`
+    /add - Add transaction`, options
   );
 }
