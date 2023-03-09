@@ -85,7 +85,7 @@ bot.onText(/\/add/, (msg) => {
   const options = {
     parse_mode: "Markdown",
     reply_markup: {
-      keyboard: [],
+      keyboard: [["income"], ["spending"]],
       one_time_keyboard: true,
     },
   };
@@ -173,18 +173,18 @@ bot.onText(/\/add/, (msg) => {
           if (categories.includes(text)) {
             setCategory(text);
             setState("amount");
-            sendMessage("Please enter the amount:", options);
+            sendMessage("Please enter the amount:");
           } else {
-            sendMessage("Please select a category:", options);
+            sendMessage("Please select a category:", cat_options);
           }
           break;
         case "amount":
           if (!isNaN(parseFloat(text))) {
             setAmount(text);
             setState("comment");
-            sendMessage("Please enter a comment (optional):", options);
+            sendMessage("Please enter a comment (optional):");
           } else {
-            sendMessage("Please enter the amount:", options);
+            sendMessage("Please enter the amount:");
           }
           break;
         case "comment":
@@ -200,7 +200,6 @@ bot.onText(/\/add/, (msg) => {
     });
   };
 
-  options.reply_markup.keyboard = [["income"], ["spending"]];
   sendMessage("Please select the transaction type:", options);
   clearOptions();
 
@@ -211,7 +210,6 @@ bot.onText(/\/add/, (msg) => {
     } else if (text === "spending") {
       handleTransaction("spending");
     } else {
-      options.reply_markup.keyboard = [["income"], ["spending"]];
       sendMessage("Please select the transaction type:", options);
       clearOptions();
     }
