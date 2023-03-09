@@ -37,26 +37,6 @@ bot.onText(/\/start/, (msg) => {
   functions.start(bot, msg);
 });
 
-// define a command handler for the /echo command using the onText method, which sends the received text back to the chat.
-bot.onText(/\/echo (.+)/, (msg, match) => {
-  const chatId = msg.chat.id;
-  const text = match[1];
-  bot.sendMessage(chatId, text);
-});
-
-bot.onText(/\/menu/, (msg) => {
-  const chatId = msg.chat.id;
-  const replyMarkup = {
-    inline_keyboard: [
-      [
-        { text: 'Start bot', switch_inline_query_current_chat: '/start' },
-        { text: 'Add transaction', switch_inline_query_current_chat: '/add' }
-      ]
-    ]
-  };
-  bot.sendMessage(chatId, 'Click the button below to open the menu:', { reply_markup: replyMarkup });
-});
-
 // Show current budget
 bot.onText(/\/budget/, async (msg) => {
   const chatId = msg.chat.id;
