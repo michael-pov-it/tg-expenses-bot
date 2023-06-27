@@ -22,7 +22,7 @@ exports.start = (bot, msg) => {
   bot.sendMessage(
     chatId,
     `Welcome in Gordievsky Family Bot!\n
-    http://surl.li/fioht - restart\n`
+    https://expenses-dev-cqetgkfjsa-uc.a.run.app/ - restart\n`
     , options
   );
 }
