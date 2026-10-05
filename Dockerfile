@@ -1,4 +1,4 @@
-FROM node:16
+FROM node:19-alpine
 
 WORKDIR /app
 
@@ -7,6 +7,8 @@ RUN npm ci
 
 COPY index.js ./
 COPY commands/ ./commands/
+
+EXPOSE 3000
 
 # Provide credentials at runtime, never in the image.
 CMD ["npm", "start"]

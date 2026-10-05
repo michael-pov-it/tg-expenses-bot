@@ -4,8 +4,9 @@ Track a shared family budget from a Telegram chat: add income or spending,
 assign a category, and check how much is left.
 
 I originally built this bot for my wife and me, with help from ChatGPT, over a
-couple of weekends. The original application code dates back to February 2023.
-This repository shares that learning project, including its rough edges.
+couple of weekends. The first version dates back to February 2023; the merged prototype also includes
+later work from the `beta-v2` and `new-version` branches. This repository shares
+that learning project, including its rough edges.
 
 **ChatGPT helped write the code. The bot itself does not call an AI model or
 require an OpenAI account or API key.**
@@ -36,11 +37,11 @@ require an OpenAI account or API key.**
 ## What it does
 
 - Records `income` and `spending` transactions in PostgreSQL.
-- Groups transactions by a category you enter, such as `groceries` or `transport`.
-- Calculates the remaining balance for each category.
-- Lists transactions from the current month or across the whole database.
-- Lists income and spending totals by category.
-- Deletes all transactions in a selected category.
+- Offers a fixed set of family-budget categories through a Telegram keyboard.
+- Stores an amount, comment, date, and the initiating Telegram user's ID.
+- Calculates remaining balances for categories with a non-zero balance.
+- Lets a configured administrator list transactions from the last 30 days,
+  list categories used in the database, and delete a category's transactions.
 
 For this bot, income adds funds to a category and spending uses those funds:
 
@@ -48,9 +49,10 @@ For this bot, income adds funds to a category and spending uses those funds:
 category balance = total income in that category - total spending in that category
 ```
 
-For example, adding `500` of income and `24.50` of spending to `groceries` leaves
-`475.50`. Budget balances cover all stored transactions; only `/last` applies a
-month filter. There is no automatic monthly reset or recurring budget schedule.
+For example, adding `500` of income and `24.50` of spending to `Еда` (Food) leaves
+`475.50`. Budget balances cover all stored transactions; `/transactions` applies
+a rolling 30-day filter. There is no automatic monthly reset or recurring budget
+schedule.
 
 ## How it works
 
@@ -66,10 +68,11 @@ The Node.js process polls Telegram for updates through
 through `pg`, and send the results back to the chat. `dotenv` loads local
 configuration from `.env`.
 
-Express also starts an HTTP server on port `3000`. Its legacy webhook route is
-unfinished; polling is the active transport. You do not need an inbound public
-HTTP endpoint for the polling bot. The database runs separately from the bot
-process and container.
+Express also starts an HTTP server on port `3000`, with JSON body parsing but
+no application routes. Polling is the active transport; there is no implemented
+webhook or health-check endpoint. You do not need an inbound public HTTP endpoint
+for the polling bot. The database runs separately from the bot process and
+container.
 
 ## Requirements
 
@@ -80,7 +83,7 @@ process and container.
 - Outbound network access to Telegram and connectivity to your database.
 - Docker if you want to try the container instructions.
 
-The original Dockerfile uses Node.js 16, which is now end of life. Use a
+The merged prototype's Dockerfile uses Node.js 19 Alpine, which is now end of life. Use a
 supported LTS release for local experimentation, and check compatibility with
 these old dependencies. The repository has no declared Node.js compatibility
 range or automated runtime compatibility tests. See the
@@ -145,23 +148,28 @@ psql --host localhost --port 5432 --username expenses --dbname expenses --passwo
 The original database schema was not checked in. The following **suggested
 schema is inferred from the current insert and reporting queries** and is
 intended for a fresh demo database. It is not a migration for an existing
-database and does not support the legacy `/update` command.
+database. In particular, the merged `/add` handler requires the `comment` and
+`user_id` columns; the older schema without those columns is insufficient.
 
 ```sql
 CREATE TABLE budget (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     type TEXT NOT NULL CHECK (type IN ('income', 'spending')),
     category TEXT NOT NULL CHECK (length(trim(category)) > 0),
+    comment TEXT NOT NULL DEFAULT '',
+    user_id BIGINT NOT NULL,
     amount NUMERIC(12, 2) NOT NULL
         CHECK (amount > 0 AND amount <> 'NaN'::numeric),
     date_of_transaction TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 ```
 
-The ID and timestamp defaults are required because `/add` inserts only the
-category, type, and amount. The checks reject invalid transaction types, empty
-categories, and non-positive or `NaN` amounts at the database level; the bot's
-own input validation still needs fixes. PostgreSQL documents these constructs
+The database generates the transaction ID. `/add` explicitly supplies the type,
+category, amount, comment, initiating user ID, and the current calendar date.
+Its date string has no time of day, so those inserts store midnight in the
+database session time zone. The timestamp default is useful for other inserts.
+The checks reject invalid types, empty categories, and non-positive or `NaN`
+amounts at the database level; application validation still needs fixes. PostgreSQL documents these constructs
 in [CREATE TABLE](https://www.postgresql.org/docs/current/sql-createtable.html).
 
 ### 4. Configure the environment
@@ -176,11 +184,14 @@ DB_NAME=expenses
 DB_USERNAME=expenses
 DB_PASSWORD=your_database_password
 CURRENCY=EUR
+ADMIN_USER_ID=
 ```
 
 The values above are placeholders. Keep `.env` local; `.env.example` is the
-shareable template. See [Configuration](#configuration) for the currency caveat
-and connection-string behavior.
+shareable template. Administrator commands are disabled until you set
+`ADMIN_USER_ID` to your own numeric Telegram user ID. See
+[Configuration](#configuration) for that setup, the currency caveat, and
+connection-string behavior.
 
 ### 5. Start the bot
 
@@ -188,11 +199,11 @@ and connection-string behavior.
 npm start
 ```
 
-A successful database connection prints `PG connection established`. The HTTP
-server also logs that it is listening on port `3000`; this log does not prove
-that Telegram polling or both database connections are healthy.
+A successful database connection prints `PG connection established successfully!`.
+The HTTP server also logs `Express server listening on port 3000`; that log
+does not prove that Telegram polling or the database connection is healthy.
 
-In your test chat, send `/add` and follow the prompts. Stop the process with
+In your test chat, send `/start` to see the menu, then `/add` and follow the prompts. Stop the process with
 `Ctrl+C`. Run only one bot process for a given token, and ensure no Telegram
 webhook is active: Telegram cannot deliver polling updates while a webhook is
 set. See the [Telegram Bot FAQ](https://core.telegram.org/bots/faq#how-do-i-get-updates).
@@ -207,7 +218,8 @@ set. See the [Telegram Bot FAQ](https://core.telegram.org/bots/faq#how-do-i-get-
 | `DB_NAME` | Database containing the `budget` table. | `expenses`. |
 | `DB_USERNAME` | PostgreSQL application user. | `expenses`. |
 | `DB_PASSWORD` | Password for the application user. | Required for the password-authenticated setup above. |
-| `CURRENCY` | Intended currency selection. | The original implementation ignores this value and displays `$`. |
+| `CURRENCY` | Intended currency selection. | The merged implementation ignores this value and always displays `€`. |
+| `ADMIN_USER_ID` | Telegram user allowed to run `/transactions`, `/categories`, and `/delete`. | Your numeric user ID; blank denies all administrator commands. |
 
 The code constructs a PostgreSQL URL by interpolating these values. Reserved
 characters in the username or password must be URL-encoded for that connection
@@ -215,57 +227,79 @@ string. There is no `DATABASE_URL`, configurable database TLS mode, or `PORT`
 setting in the application. Managed databases that require additional TLS
 configuration need a code change.
 
-Category names are stored as entered and are case-sensitive. Amounts are
-entered as positive numbers, using a dot for decimals. Store all transactions
-in the same currency: the database has no per-transaction currency column.
+To find your own ID using the current prototype, initially leave
+`ADMIN_USER_ID` blank and send `/categories` in your private test chat. The
+command is denied, and its handler prints the requesting user ID to your local
+terminal. Stop the bot, set that ID in `.env`, and restart. This restriction
+applies only to the three administrator commands; `/add` and `/budget` are
+not restricted by user or chat.
+
+Category names are case-sensitive. `/add` accepts only the built-in category
+names listed below. Enter positive amounts with a dot for decimals, and store
+all transactions in the same currency: there is no per-transaction currency
+column.
 
 ## Using the bot
 
-An example of funding a category, using the actual current prompts:
+Send `/start` for the command menu. An example of funding a category, using the
+actual prompts in the merged prototype:
 
 ```text
 You: /add
-Bot: Что бы Вы хотели добавить? (income || spending)
+Bot: Please select the transaction type:
 You: income
-Bot: What is the amount of the transaction?
+Bot: Please select a category:
+You: Еда
+Bot: Please enter the amount:
 You: 500
-Bot: What category does this income belong to?
-You: groceries
-Bot: income added successfully.
+Bot: Please enter a comment (optional):
+You: food budget
+Bot: Transaction added successfully!
 ```
 
-Repeat `/add`, this time replying `spending`, then `24.50`, then `groceries`.
-Send `/budget` to see the remaining category balance of `475.50`. The current
-code displays a dollar symbol even if `CURRENCY=EUR`.
+Repeat `/add`, this time replying `spending`, `Еда`, `24.50`, and
+`weekly groceries`. Send `/budget` to see the remaining balance of `€475.50`.
+The currency symbol is hard-coded even if you set `CURRENCY` to another value.
 
-Finish the three questions before starting another transaction, and avoid
-other messages during that exchange. The bot does not have a `/cancel`
-command, conversation timeout, or separate conversation state for each user.
-Some prompts are in Russian and others in English.
+The category buttons are currently hard-coded in Russian:
+
+| Category value | Meaning |
+| --- | --- |
+| `Дом` | Home |
+| `Еда` | Food |
+| `Рестораны` | Restaurants |
+| `Развлечения` | Entertainment |
+| `Другое` | Other |
+
+The comment prompt says optional, but the handler waits for a text reply;
+there is no skip button or `/skip` command. Use a short placeholder such as
+`-` when you have no comment.
+
+Finish the exchange before starting another transaction, and avoid other
+messages during it. There is no `/cancel` command, conversation timeout, or
+separate conversation state for each user. Category labels and some error
+messages are in Russian; most prompts are in English.
 
 ## Commands
 
 | Command | Current behavior |
 | --- | --- |
-| `/add` | Ask for `income` or `spending`, then amount and category; insert a transaction. |
-| `/budget` | Show all-time category balances that are zero or positive. Overspent categories are hidden. |
-| `/last` | List transactions dated from the start of the current database month onward. |
-| `/transactions` | List all stored transactions with their IDs, types, categories, and amounts. |
-| `/list income` | Sum income by category, counting only individual entries with `amount > 1`. |
-| `/list spending` | Sum spending by category, counting only individual entries with `amount > 1`. |
-| `/delete groceries` | Delete every stored transaction whose category is exactly `groceries`, across all dates. |
-| `/keyboard` | Display a legacy `START BOT` button; it is not a complete onboarding flow. |
-| `/update` | Legacy handler that expects separate `income` and `spending` columns. Incompatible with the transaction schema above. |
+| `/start` | Display a welcome message and the `/start`, `/add`, `/budget` keyboard. |
+| `/add` | Ask for type, category, amount, and comment; insert a transaction with date and user ID. |
+| `/budget` | Show all-time category balances except zero balances, including overspent categories. |
+| `/transactions` | Administrator: list transactions from the last 30 days with dates, amounts, categories, and comments. |
+| `/categories` | Administrator: list distinct category values already stored in the database. |
+| `/delete Еда` | Administrator: delete every transaction whose category is exactly `Еда`, across all dates. |
 
-Deletion has no confirmation or undo. `/delete` captures only ASCII letters,
-digits, and underscores; spaces or punctuation end the captured category name.
-Use simple category names when experimenting, and double-check what a command
-will match before deleting data.
+Administrator commands require the caller's user ID to match `ADMIN_USER_ID`.
+Category deletion has no confirmation or undo. It supports Unicode and spaces,
+but the category must match the stored value exactly, including case and any
+trailing whitespace.
 
-There are no implemented `/start`, `/help`, or `/cancel` command handlers.
-Reports have no guaranteed sort order or pagination. `/last` groups rows by
-formatted timestamp, category, type, and amount, so identical transactions
-within the same second can appear as one entry in that report.
+The merged prototype does not implement `/help`, `/cancel`, `/last`, `/list`,
+`/update`, or `/keyboard`; older commits contain some of those handlers.
+Reports have no guaranteed sort order or pagination, and a long report can
+exceed Telegram's message-length limit.
 
 ## Running with Docker
 
@@ -286,8 +320,8 @@ name on a shared Docker network. If using Docker Desktop and a database on the
 host, use the host address supported by your Docker installation.
 
 Polling does not require publishing port `3000` to the host. The retained
-Node.js 16 base image and old dependencies need updating before deploying a
-production instance.
+Node.js 19 Alpine base image and old dependencies need updating before deploying
+a production instance.
 
 ## Hosting
 
@@ -299,19 +333,20 @@ There is no maintained deployment workflow or Docker Compose setup in this
 repository. A polling deployment needs a continuously running process,
 database connectivity, and one instance per bot token. Deployment to Cloud Run
 requires accounting for its CPU allocation, instance lifecycle, and scaling;
-the historical HTTP route does not turn this application into a working webhook
-bot. Hosting modernization is future work.
+the listening HTTP server has no webhook or health-check route. Hosting modernization is future work.
 
 ## Project structure
 
 ```text
 .
 ├── commands/
-│   └── transactions.js   # /transactions handler and a second database client
-├── index.js              # Startup, polling, Express, and other command handlers
-├── package.json          # App metadata, runtime dependencies, and start script
+│   └── functions.js      # /start welcome message and command keyboard
+├── test/
+│   └── bot.test.js        # Offline transaction and administrator checks
+├── index.js              # Startup, polling, Express, and command handlers
+├── package.json          # App metadata, runtime dependencies, start/test scripts
 ├── package-lock.json     # Locked dependency versions
-├── Dockerfile            # Original Node.js 16 container
+├── Dockerfile            # Prototype Node.js 19 Alpine container
 ├── .dockerignore         # Excludes local credentials and files from builds
 ├── .env.example          # Environment template with no real credentials
 ├── .gitignore            # Excludes local config, dependencies, and data exports
@@ -321,30 +356,32 @@ bot. Hosting modernization is future work.
 
 ## Known limitations
 
-This list describes the code as it exists, including behavior that differs
-from the intended family-budget experience:
+This list describes the merged historical prototype, including behavior that
+still needs work before use with real family finances:
 
-- **No access control or chat isolation.** Every chat handled by the bot uses the
-  same table. There is no user allowlist or `chat_id` column. A person who can
-  interact with a deployed bot may be able to read or delete its budget data.
-- **Global conversations.** `/add` and `/update` use `bot.once('message', ...)`
-  without checking the originating chat or user. Unrelated replies can fill in
-  another person's transaction; non-text messages can also cause errors.
-- **Broken amount validation.** The application combines the `NaN` and
-  non-positive checks incorrectly and uses permissive `parseFloat` parsing.
-- **Broken currency selection.** An ordinary quoted string is used where an
-  environment value was intended, so `CURRENCY` has no effect.
-- **Inconsistent reports.** Negative category balances are omitted, `/list`
-  ignores entries of `1` or less, and `/last` can combine duplicate rows.
-- **Incomplete commands.** `/update` uses an incompatible old schema; the
-  keyboard button does not supply a complete start/help flow.
-- **Old runtime and dependencies.** Versions are retained from the original
-  project. Dependency upgrades and a supported container base are still needed.
-- **Limited operational handling.** Two database clients are created, connection
-  failures are handled inconsistently, and there is no graceful shutdown,
-  report pagination, or automated test suite.
-- **Unfinished HTTP support.** The webhook route lacks JSON body parsing and
-  is present alongside active polling. Keep it private until it is reworked.
+- **Partial access control and no chat isolation.** Only `/transactions`,
+  `/categories`, and `/delete` check `ADMIN_USER_ID`. `/add` and `/budget` are
+  unrestricted. All chats share one table; there is no `chat_id` column, and
+  storing `user_id` does not isolate data or restrict reporting queries.
+- **Global conversations.** `/add` listens for messages without checking the
+  originating chat or user. Simultaneous conversations or unrelated messages
+  can interfere. Non-text input at the type step can throw an error.
+- **Permissive amount parsing.** `parseFloat` accepts numeric prefixes and the
+  handler does not reject zero, negative, or infinite amounts itself. The
+  suggested database constraints reject invalid stored amounts.
+- **Fixed categories and currency.** Category buttons are hard-coded in Russian;
+  currency is hard-coded to euros and `CURRENCY` has no effect.
+- **Incomplete comment/date handling.** A comment reply is required despite the
+  optional label. Inserted dates have day precision rather than the actual
+  transaction time of day.
+- **Limited reports.** Zero category balances are omitted, transaction reports
+  cover only the last 30 days, and there is no sorting guarantee or pagination.
+- **Old runtime and dependencies.** The prototype's versions are retained.
+  Dependency upgrades and a supported container base are still needed.
+- **Limited operational handling.** There is no graceful shutdown, automatic
+  migration, backup job, or live integration test coverage.
+- **Unused HTTP listener.** Express reserves port `3000` but exposes no
+  application, webhook, or health-check endpoint.
 
 ## Troubleshooting
 
@@ -353,14 +390,17 @@ from the intended family-budget experience:
 | Telegram returns `401 Unauthorized`. | Confirm `BOT_TOKEN` is set, correct, and has not been revoked. |
 | Telegram reports a polling conflict. | Stop other processes using the token; remove any active webhook. |
 | Commands arrive but answers to questions do not. | Check group privacy mode, re-add the bot after changing it, or test in a private chat. |
-| PostgreSQL connection is refused. | Check that PostgreSQL is running and that the host and port are reachable from the bot process or container. |
-| PostgreSQL authentication fails. | Check the role, password, database access rules, and URL encoding of credential characters. |
+| PostgreSQL connection is refused. | Check that PostgreSQL is running and that the host/port are reachable from the bot process or container. |
+| PostgreSQL authentication fails. | Check the role, password, access rules, and URL encoding of credential characters. |
 | `relation "budget" does not exist`. | Create the table in the database selected by `DB_NAME`, as the application user. |
-| `/budget` omits a category. | It hides negative balances; check category spelling/case and inspect `/transactions`. |
-| `/list` omits a small transaction. | Its query only includes individual amounts greater than `1`. |
-| The bot displays `$` for an EUR budget. | This is the documented currency bug. |
-| Port `3000` is already in use. | Stop the conflicting local process or change the hard-coded Express port in `index.js`. |
-| `/update` fails. | It needs reimplementation for the transaction schema; it is not supported by the suggested setup. |
+| PostgreSQL reports a missing `comment` or `user_id` column. | The merged `/add` requires the schema documented above; the older five-column schema is insufficient. |
+| `/transactions`, `/categories`, or `/delete` is denied. | Configure `ADMIN_USER_ID` with your numeric Telegram ID and restart the bot. |
+| `/budget` omits a category. | Zero balances are hidden; compare the stored category value and funding/spending totals. |
+| `/transactions` shows no entries. | It only includes entries within the last 30 days. |
+| The bot keeps asking for a category. | Choose one of the exact built-in Russian category names. |
+| The transaction never completes after the amount. | Send a text comment or `-`; the optional comment prompt still requires a reply. |
+| The bot displays `€` for another configured currency. | Currency is hard-coded in this prototype. |
+| Port `3000` is already in use. | Stop the conflicting process or change the hard-coded Express port in `index.js`. |
 
 ## Data and credentials
 
@@ -401,18 +441,22 @@ Useful next improvements include chat/user access control, isolated and
 cancelable conversation state, correct amount and currency handling, consistent
 reporting, database migrations, and dependency/runtime updates.
 
-There is currently no `npm test` script. Basic checks available without live
-credentials are:
+The test suite runs the actual command handlers with fake Telegram, HTTP, and
+PostgreSQL connections. It covers completing a transaction, removing its
+conversation listener, and allowing/denying administrator commands. Checks
+available without live credentials are:
 
 ```sh
 node --check index.js
-node --check commands/transactions.js
+node --check commands/functions.js
+npm test
 npm ci --omit=dev --ignore-scripts --dry-run
 ```
 
-These check syntax and package resolution; they do not exercise Telegram or
-PostgreSQL behavior. Functional verification requires your separate test bot
-and demo database.
+The suite checks handler behavior offline, and the other commands check syntax
+and package resolution. They do not validate live Telegram or PostgreSQL
+behavior. End-to-end verification requires a separate test bot and demo
+database.
 
 ## License
 

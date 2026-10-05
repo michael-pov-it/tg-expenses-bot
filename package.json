@@ -1,15 +1,17 @@
 {
-  "name": "tg-bot-expenses",
-  "version": "0.1.1-beta",
+  "name": "family-bot",
+  "version": "0.3.0-beta",
   "description": "A Telegram bot for tracking a shared family budget, originally built in 2023 with help from ChatGPT.",
   "private": true,
   "main": "index.js",
   "scripts": {
-    "start": "node ./index.js"
+    "start": "node ./index.js",
+    "test": "node --test"
   },
   "keywords": [
     "telegram",
     "family-budget",
+    "family-bot",
     "nodejs",
     "postgresql"
   ],
