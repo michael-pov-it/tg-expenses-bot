@@ -1,24 +1,32 @@
 {
   "name": "tg-bot-expenses",
   "version": "0.1.1-beta",
-  "description": "",
+  "description": "A Telegram bot for tracking a shared family budget, originally built in 2023 with help from ChatGPT.",
+  "private": true,
   "main": "index.js",
   "scripts": {
     "start": "node ./index.js"
   },
   "keywords": [
-    "tg-bot",
-    "bot",
-    "ai"
+    "telegram",
+    "family-budget",
+    "nodejs",
+    "postgresql"
   ],
   "author": "Mike_The_Engineer",
-  "license": "GNU",
-  "devDependencies": {
+  "license": "GPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/michael-pov-it/tg-expenses-bot.git"
+  },
+  "bugs": {
+    "url": "https://github.com/michael-pov-it/tg-expenses-bot/issues"
+  },
+  "homepage": "https://github.com/michael-pov-it/tg-expenses-bot#readme",
+  "dependencies": {
     "dotenv": "^16.0.3",
+    "express": "^4.18.2",
     "node-telegram-bot-api": "^0.61.0",
     "pg": "^8.9.0"
-  },
-  "dependencies": {
-    "express": "^4.18.2"
   }
 }

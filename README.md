@@ -13,9 +13,10 @@ ChatGPT helped during development. The bot itself does not call an AI model.
 - SQL queries calculate category balances and list transactions.
 - Replies are sent back to the Telegram chat.
 
-The repository also contains a Dockerfile and the original GitHub Actions
-workflow for building a container and deploying it to Google Cloud Run. The
-database is separate from the bot container.
+The original project ran in Docker and used GitHub Actions to deploy to Google
+Cloud Run. The Dockerfile is included; the obsolete workflow tied to my personal
+cloud setup was removed during cleanup. The database is separate from the bot
+container.
 
 ## Commands
 
@@ -29,11 +30,20 @@ database is separate from the bot container.
 | `/list spending` | Total spending by category, for entries with an amount above 1. |
 | `/delete category` | Delete transactions in the named category. |
 
-## Configuration
+## Local setup
 
-Copy `.env.example` to `.env` and set your own bot token and PostgreSQL connection
-values. Keep the file local. When running a container, supply those values at
-runtime; do not put them in the Dockerfile or image.
+You need Node.js, npm, a Telegram bot token from BotFather, and a PostgreSQL
+database. This is a historical demo with the limitations listed below.
+
+```sh
+git clone https://github.com/michael-pov-it/tg-expenses-bot.git
+cd tg-expenses-bot
+npm ci
+cp .env.example .env
+```
+
+Edit `.env` to set your own bot token and PostgreSQL connection values. The blank
+`BOT_TOKEN` and `DB_PASSWORD` values must be filled in. Keep the file local.
 
 | Variable | Purpose |
 | --- | --- |
@@ -47,14 +57,30 @@ runtime; do not put them in the Dockerfile or image.
 
 The original database schema is not included. The main commands expect a
 `budget` table with `id`, `type`, `category`, `amount`, and
-`date_of_transaction` columns. A compatible database is needed before starting
-the app with `npm ci` and `npm start`.
+`date_of_transaction` columns. The database must generate the transaction ID and
+timestamp when a row is inserted. After configuring a compatible database:
+
+```sh
+npm start
+```
+
+To try the original container:
+
+```sh
+docker build -t tg-expenses-bot .
+docker run --rm --env-file .env tg-expenses-bot
+```
+
+Set `DB_HOST` to an address reachable from inside the container. Supply
+credentials at runtime; do not put them in the Dockerfile or image.
 
 ## Project status
 
 This is the original learning project, kept as a historical example. The 2026
-repository cleanup removes credential examples and unused files, adds ignore
-rules, and documents the code. It does not modernize the application.
+repository cleanup removes unused files and personal deployment configuration,
+corrects package metadata, keeps runtime dependencies in `dependencies`, and
+documents the code. The dependency versions and bot behavior remain those of
+the original project.
 
 Known limitations in the original code:
 
@@ -70,6 +96,12 @@ Do not use this version for a public bot or sensitive financial data without
 addressing those issues. Previously committed credentials must be revoked or
 rotated; removing them from current files does not invalidate them or erase old
 commits.
+
+## Contributing
+
+Issues and small fixes are welcome. Include reproduction steps for a bug and
+explain how you checked a change. Never include bot tokens, database passwords,
+database backups, or real transaction data in an issue or pull request.
 
 ## License
 

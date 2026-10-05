@@ -1,5 +1,8 @@
 .git
 .github
+.agents
+.aws
+.codex
 .env
 .env.*
 **/.env
@@ -9,3 +12,15 @@ node_modules
 *.log
 coverage
 .scratch
+*.pem
+*.key
+*.p12
+*.pfx
+backups
+exports
+*.sql.gz
+*.dump
+*.backup
+*.csv
+.DS_Store
+Thumbs.db
