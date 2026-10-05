@@ -1,0 +1,11 @@
+.git
+.github
+.env
+.env.*
+**/.env
+**/.env.*
+node_modules
+**/node_modules
+*.log
+coverage
+.scratch

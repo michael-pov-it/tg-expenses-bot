@@ -2,7 +2,7 @@ const { Client } = require('pg');
 const dotenv = require('dotenv');
 dotenv.config();
 
-const databaseUrl = `postgresql://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`; // 'postgresql://your_username:your_password@localhost:5432/expenses';
+const databaseUrl = `postgresql://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`;
 const client = new Client({
   connectionString: databaseUrl,
 });
@@ -27,8 +27,8 @@ module.exports = (bot) => {
       });
       bot.sendMessage(chatId, transactionsList);
     } catch (error) {
-        console.error(error);
-        bot.sendMessage(chatId, 'An error occurred while retrieving the list of transactions. Please try again later.');
+      console.error(error);
+      bot.sendMessage(chatId, 'An error occurred while retrieving the list of transactions. Please try again later.');
     }
   });
 };
